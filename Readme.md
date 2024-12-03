@@ -104,7 +104,7 @@
 # sketch_dec03c.ino
 
 
-## Blynk 控制 LED、監控按鈕及 DHT11 感測器 (繁體中文)
+### Blynk 控制 LED、監控按鈕及 DHT11 感測器 
 
 這段程式碼结合了 Blynk、DHT11 感測器和按鈕控制的功能，可以透過 Blynk 應用程式監控環境濕度、溫度以及控制 LED 燈。
 
