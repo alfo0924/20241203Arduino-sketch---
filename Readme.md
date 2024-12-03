@@ -1,4 +1,4 @@
-# 20241203 sketch_dec03a.ino
+# sketch_dec03a.ino
 
 這段程式碼是用於控制 ESP32 開發板，並透過 Blynk 手機應用程式進行互動。
 
@@ -36,7 +36,7 @@
 5. ESP32 讀取該值，並控制第 4 號數位腳位的電位，例如控制 LED 的亮灭。
 
 
-# 20241203 sketch_dec03b.ino
+#  sketch_dec03b.ino
 
 
 
