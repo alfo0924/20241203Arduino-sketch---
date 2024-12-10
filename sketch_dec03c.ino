@@ -1,98 +1,104 @@
-
+// 定義Blynk相關設定
 #define BLYNK_PRINT Serial
 #define BLYNK_TEMPLATE_ID "TMPL6a5aCTY4h"
 #define BLYNK_TEMPLATE_NAME "Quickstart Template"
 #define BLYNK_AUTH_TOKEN "KOZ0vVcmLTIWwJe_GGglcabiZyD0Msxw"
 
+// 引入需要的函式庫
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <BlynkSimpleEsp32.h>
 #include "DHT.h"
 
-#define DHTPIN 16
-#define DHTTYPE DHT11
-#define BUTTON_PIN 17
-#define LED_PIN 4
+// WiFi連線設定
+char ssid[] = "alfredojayjaylin";    // WiFi名稱
+char pass[] = "9987321wificode";      // WiFi密碼
 
+// 宣告硬體計時器指標，初始值為空
+hw_timer_t * timer = NULL;
+
+// 宣告計數器變數，用於追蹤執行次數
+int counter = 0;
+
+// 定義DHT11溫濕度感測器設定
+#define DHTPIN 16     // DHT11連接到ESP32的腳位16
+#define DHTTYPE DHT11 // 指定使用DHT11感測器型號
 DHT dht(DHTPIN, DHTTYPE);
 
-// WiFi credentials
-char ssid[] = "alfredojayjaylin";
-char pass[] = "9987321wificode";
+// 定義中斷服務程序（ISR）
+// 當計時器觸發中斷時，此函數會被呼叫
+// 功能：將腳位4的輸出狀態反轉（HIGH變LOW或LOW變HIGH）
+void ARDUINO_ISR_ATTR interrupt_func() {
+    digitalWrite(4, !digitalRead(4));
+}
 
-// 按鈕防彈跳變數
-unsigned long lastDebounceTime = 0;
-unsigned long debounceDelay = 50;
-bool lastButtonState = HIGH;
-bool buttonState = HIGH;
-bool flag = false;
+// 定義傳送感測器數據到Blynk的函數
+void sendSensor() {
+    // 讀取濕度值
+    float h = dht.readHumidity();
+    
+    // 檢查讀取是否成功
+    if (isnan(h)) {
+        Serial.println("Failed to read from DHT sensor!");
+        return;
+    }
+    
+    // 將濕度數據傳送到Blynk的虛擬腳位V16
+    Blynk.virtualWrite(V16, h);
+}
 
+// 初始化設定
 void setup() {
+    // 設定序列埠通訊速率
     Serial.begin(115200);
+    // 設定腳位4為輸出模式
+    pinMode(4, OUTPUT);
+    
+    // 初始化DHT11感測器
+    dht.begin();
+    
+    // 連接到Blynk雲端平台
     Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
     
-    pinMode(LED_PIN, OUTPUT);
-    pinMode(BUTTON_PIN, INPUT_PULLUP);
-    pinMode(DHTPIN, OUTPUT);
+    // 初始化計時器
+    // 設定clock頻率
+    timer = timerBegin(100000);
+    // 設定中斷函式
+    timerAttachInterrupt(timer, &interrupt_func);
+    // 設定進入中斷函式的頻率
+    timerAlarm(timer, 100000, true, 0);
 
-    Serial.println("DHT11 test!");
-    dht.begin();
+    // 檢查計時器是否成功初始化
+    if(timer == NULL) {
+        Serial.println("Error occur in setting timer");
+    }
 }
 
+// 主程式迴圈
 void loop() {
+    // 運行Blynk程序
     Blynk.run();
     
-    // 按鈕防彈跳處理
-    int reading = digitalRead(BUTTON_PIN);
+    // 讀取濕度數值
+    float humidity = dht.readHumidity();
     
-    if (reading != lastButtonState) {
-        lastDebounceTime = millis();
+    // 檢查讀取是否成功並輸出
+    if (isnan(humidity)) {
+        Serial.println("Failed to read humidity from DHT sensor!");
+    } else {
+        // 輸出濕度數值到序列埠
+        Serial.print("Humidity: ");
+        Serial.print(humidity);
+        Serial.println("%");
+        // 將濕度數據傳送到Blynk的虛擬腳位V16
+        Blynk.virtualWrite(V16, humidity);
     }
     
-    if ((millis() - lastDebounceTime) > debounceDelay) {
-        if (reading != buttonState) {
-            buttonState = reading;
-            
-            if (buttonState == LOW && !flag) {
-                Blynk.virtualWrite(V3, "Button Down");
-                flag = true;
-                Serial.println("down");
-            } else if (buttonState == HIGH && flag) {
-                Blynk.virtualWrite(V3, "Button Up");
-                Serial.println("up");
-                flag = false;
-            }
-        }
-    }
+    // 計數器相關操作
+    Serial.print("Counter: ");
+    Serial.println(counter);
+    counter++;
     
-    lastButtonState = reading;
-
-    // DHT11 感測器讀取
-    static unsigned long lastDHTReadTime = 0;
-    if (millis() - lastDHTReadTime > 2000) {
-        float h = dht.readHumidity();
-        float t = dht.readTemperature();
-        
-        if (!isnan(h) && !isnan(t)) {
-            Serial.print("濕度: ");
-            Serial.print(h);
-            Serial.print("% 溫度: ");
-            Serial.print(t);
-            Serial.println("°C");
-
-            String humidity_str = String(h, 2);
-            String temperature_str = String(t, 2);
-            Blynk.virtualWrite(V16, "濕度" + humidity_str + " 溫度" + temperature_str);
-        } else {
-            Serial.println("無法從DHT感測器讀取數據！");
-        }
-        
-        lastDHTReadTime = millis();
-    }
-}
-
-BLYNK_WRITE(V0) {
-    int value = param.asInt();
-    digitalWrite(LED_PIN, value);
-    Serial.println(value);
+    // 延遲1秒
+    delay(1000);
 }
